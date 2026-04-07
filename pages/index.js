@@ -259,8 +259,32 @@ const Index = () => {
            {error && <p className="text-red-400 text-center mt-4 font-black">{error}</p>}
         </section>
       ) : (
-        <main className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-4 gap-8">
-           <div className="lg:col-span-3 space-y-8">
+        <main className="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-12 gap-8">
+           <div className="lg:col-span-3 space-y-8 flex flex-col order-2 lg:order-1">
+              <section className="bg-slate-800 rounded-[2.5rem] p-6 border border-slate-700 shadow-2xl flex flex-col h-[600px]">
+                 <h3 className="text-[10px] font-black text-slate-500 mb-4 uppercase tracking-widest border-b border-slate-700 pb-3 flex items-center justify-between">
+                   <span>LIVE CHAT</span>
+                   <span className="text-xs bg-slate-700 px-2 rounded-full">{chat.length}</span>
+                 </h3>
+                 <div className="overflow-y-auto custom-scrollbar flex-grow space-y-3 mb-4 pr-1 flex flex-col">
+                    {chat.map((c, i) => (
+                       <div key={i} className={`flex flex-col max-w-[85%] ${c.playerId === playerId ? 'self-end items-end' : 'self-start items-start'}`}>
+                          <span className="text-[8px] text-slate-500 mb-1">{c.playerName || '無名'}</span>
+                          <div className={`px-4 py-2 rounded-2xl text-sm break-words ${c.playerId === playerId ? 'bg-cyan-600/80 text-white rounded-tr-sm border border-cyan-500/50' : 'bg-slate-900/80 text-white rounded-tl-sm border border-slate-700/50'}`}>
+                             {c.text}
+                          </div>
+                       </div>
+                    ))}
+                    <div ref={chatBottomRef}></div>
+                 </div>
+                 <form onSubmit={sendChat} className="flex space-x-2 shrink-0">
+                    <input type="text" value={chatMsg} onChange={(e)=>setChatMsg(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-2xl px-4 py-3 text-sm text-white focus:border-cyan-500 outline-none transition-all placeholder-slate-600" placeholder="打個招呼吧..."/>
+                    <button type="submit" className="bg-gradient-to-r from-cyan-600 to-blue-500 text-white px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:shadow-cyan-500/25 active:scale-95 transition-all">傳送</button>
+                 </form>
+              </section>
+           </div>
+
+           <div className="lg:col-span-6 space-y-8 order-1 lg:order-2">
               <section className="bg-slate-800 rounded-[2.5rem] p-10 border border-slate-700 shadow-2xl">
                  <div className="flex justify-between items-center mb-8">
                     <div className="flex space-x-4">
@@ -358,7 +382,7 @@ const Index = () => {
               </section>
            </div>
 
-           <div className="space-y-8 flex flex-col">
+           <div className="lg:col-span-3 space-y-8 flex flex-col order-3 lg:order-3">
               <section className="bg-slate-800 rounded-[2.5rem] p-8 border border-slate-700 shadow-2xl min-h-[400px]">
                  <h3 className="text-[10px] font-black text-slate-500 mb-8 uppercase tracking-widest border-b border-slate-700 pb-5">Ranking Board</h3>
                  <div className="space-y-4">
@@ -392,28 +416,6 @@ const Index = () => {
                       ))
                     )}
                  </div>
-              </section>
-
-              <section className="bg-slate-800 rounded-[2.5rem] p-6 border border-slate-700 shadow-2xl flex flex-col h-[350px]">
-                 <h3 className="text-[10px] font-black text-slate-500 mb-4 uppercase tracking-widest border-b border-slate-700 pb-3 flex items-center justify-between">
-                   <span>LIVE CHAT</span>
-                   <span className="text-xs bg-slate-700 px-2 rounded-full">{chat.length}</span>
-                 </h3>
-                 <div className="overflow-y-auto custom-scrollbar flex-grow space-y-3 mb-4 pr-1 flex flex-col">
-                    {chat.map((c, i) => (
-                       <div key={i} className={`flex flex-col max-w-[85%] ${c.playerId === playerId ? 'self-end items-end' : 'self-start items-start'}`}>
-                          <span className="text-[8px] text-slate-500 mb-1">{c.playerName || '無名'}</span>
-                          <div className={`px-4 py-2 rounded-2xl text-sm break-words ${c.playerId === playerId ? 'bg-cyan-600/80 text-white rounded-tr-sm border border-cyan-500/50' : 'bg-slate-900/80 text-white rounded-tl-sm border border-slate-700/50'}`}>
-                             {c.text}
-                          </div>
-                       </div>
-                    ))}
-                    <div ref={chatBottomRef}></div>
-                 </div>
-                 <form onSubmit={sendChat} className="flex space-x-2 shrink-0">
-                    <input type="text" value={chatMsg} onChange={(e)=>setChatMsg(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-2xl px-4 py-3 text-sm text-white focus:border-cyan-500 outline-none transition-all placeholder-slate-600" placeholder="打個招呼吧..."/>
-                    <button type="submit" className="bg-gradient-to-r from-cyan-600 to-blue-500 text-white px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:shadow-cyan-500/25 active:scale-95 transition-all">傳送</button>
-                 </form>
               </section>
            </div>
         </main>
