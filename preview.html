@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1A2B GLOBAL - 便攜預覽版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- 使用 Firebase CDN -->
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+      import { getDatabase, ref, set, onValue, update, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyAgTxd7KtrmS1L58x4VRnMWHWZfm0UlbCE",
+        authDomain: "a2b-schonbro.firebaseapp.com",
+        databaseURL: "https://a2b-schonbro-default-rtdb.firebaseio.com",
+        projectId: "a2b-schonbro",
+        storageBucket: "a2b-schonbro.firebasestorage.app",
+        messagingSenderId: "813643775031",
+        appId: "1:813643775031:web:c595196f53390bec4913b2"
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getDatabase(app);
+      window.FB = { db, ref, set, onValue, update, remove, onDisconnect };
+    </script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #020617; color: #f8fafc; }
+        .bg-glass { background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .btn-primary { background: linear-gradient(135deg, #06b6d4, #3b82f6); transition: all 0.2s; color: white; border-radius: 1rem; font-weight: 800; }
+        .btn-primary:active { transform: scale(0.95); }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+
+        const generateAnswer = (length = 4) => {
+            const numbers = Array.from({ length: 10 }, (_, i) => i.toString());
+            const res = [];
+            for (let i = 0; i < length; i++) {
+                const idx = Math.floor(Math.random() * numbers.length);
+                res.push(numbers[idx]);
+                numbers.splice(idx, 1);
+            }
+            return res.join('');
+        };
+
+        const calculateAB = (answer, guess) => {
+            let a = 0; let b = 0;
+            const aArr = answer.split(''), gArr = guess.split('');
+            for (let i = 0; i < answer.length; i++) {
+                if (gArr[i] === aArr[i]) a++;
+                else if (aArr.includes(gArr[i])) b++;
+            }
+            return { a, b };
+        };
+
+        function App() {
+            const [roomId, setRoomId] = useState('');
+            const [playerId] = useState('P' + Math.floor(Math.random() * 9000));
+            const [isHost, setIsHost] = useState(false);
+            const [inRoom, setInRoom] = useState(false);
+            const [roomData, setRoomData] = useState(null);
+            const [guess, setGuess] = useState('');
+            const [error, setError] = useState('');
+            const [digitCount, setDigitCount] = useState(4);
+            const [marks, setMarks] = useState(Array(10).fill('none'));
+
+            useEffect(() => {
+                if (!inRoom || !roomId || !window.FB) return;
+                const { db, ref, onValue, update, onDisconnect } = window.FB;
+                const roomRef = ref(db, `rooms/${roomId}`);
+                const unsubscribe = onValue(roomRef, (snapshot) => {
+                    const data = snapshot.val();
+                    if (!data) return;
+                    setRoomData(data);
+                    if (data.digitCount) setDigitCount(data.digitCount);
+                });
+                const playerRef = ref(db, `rooms/${roomId}/players/${playerId}`);
+                update(playerRef, { id: playerId, history: [] });
+                onDisconnect(playerRef).remove();
+                return () => unsubscribe();
+            }, [inRoom, roomId, playerId]);
+
+            useEffect(() => {
+                const saved = localStorage.getItem(`marks_${roomId}_${playerId}`);
+                if (saved) setMarks(JSON.parse(saved));
+                else setMarks(Array(10).fill('none'));
+            }, [inRoom, roomId, playerId]);
+
+            useEffect(() => {
+                if (inRoom) localStorage.setItem(`marks_${roomId}_${playerId}`, JSON.stringify(marks));
+            }, [marks, inRoom, roomId, playerId]);
+
+            const handleCreate = () => {
+                if (!window.FB) return;
+                const id = Math.floor(1000 + Math.random() * 9000).toString();
+                const { db, ref, set } = window.FB;
+                set(ref(db, `rooms/${id}`), {
+                    id, status: 'waiting', answer: '', hostId: playerId, digitCount, players: {}
+                }).then(() => {
+                    setRoomId(id); setIsHost(true); setInRoom(true);
+                });
+            };
+
+            const submitGuess = (e) => {
+                e.preventDefault();
+                if (roomData?.status !== 'playing') return;
+                if (guess.length !== digitCount || new Set(guess).size !== digitCount) return setError(`請輸入 ${digitCount} 位不重複數字`);
+                const res = calculateAB(roomData.answer, guess);
+                const prev = roomData.players[playerId]?.history || [];
+                const updated = [{ guess, ...res }, ...prev];
+                const { db, ref, update } = window.FB;
+                update(ref(db, `rooms/${roomId}/players/${playerId}`), { history: updated });
+                setGuess(''); setError('');
+                if (res.a === digitCount) update(ref(db, `rooms/${roomId}`), { status: 'finished', winner: playerId });
+            };
+
+            const startGame = () => {
+                if (!window.FB) return;
+                const { db, ref, update } = window.FB;
+                update(ref(db, `rooms/${roomId}`), { status: 'playing', answer: generateAnswer(digitCount) });
+            };
+
+            if (!inRoom) {
+                return (
+                    <div className="min-h-screen flex flex-col items-center justify-center p-6 space-y-12">
+                        <h1 className="text-5xl font-black italic bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">1A2B GLOBAL</h1>
+                        <div className="bg-glass p-10 rounded-[2.5rem] w-full max-w-sm space-y-8 shadow-2xl">
+                             <div className="space-y-4">
+                                <label className="text-[10px] font-black text-slate-500 uppercase px-1">設定位數</label>
+                                <div className="flex space-x-2">
+                                    {[3,4,5].map(n => (
+                                        <button key={n} onClick={()=>setDigitCount(n)} className={`flex-1 py-3 rounded-xl border font-bold transition-all ${digitCount===n?'bg-cyan-600 border-cyan-400':'bg-slate-800 border-slate-700 text-slate-500'}`}>{n}位</button>
+                                    ))}
+                                </div>
+                             </div>
+                             <button onClick={handleCreate} className="w-full btn-primary py-5 text-xl shadow-lg">👑 建立房間</button>
+                             <div className="relative py-4 text-center text-[10px] font-bold text-slate-700">或者</div>
+                             <div className="space-y-4">
+                                <input placeholder="輸入 4 位房號" className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-center text-4xl font-mono focus:border-cyan-500 outline-none" value={roomId} onChange={(e)=>setRoomId(e.target.value.replace(/\D/g,''))}/>
+                                <button onClick={()=>setInRoom(true)} className="w-full py-4 bg-slate-800 rounded-2xl font-bold">🤝 加入房間</button>
+                                {error && <p className="text-red-500 text-center font-bold">{error}</p>}
+                             </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (!roomData) return <div className="min-h-screen flex items-center justify-center text-cyan-400 font-black animate-pulse">CONNECTING...</div>;
+
+            return (
+                <div className="p-4 md:p-12 max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
+                    <div className="flex-1 bg-glass p-8 rounded-[3rem] shadow-2xl">
+                        <div className="flex justify-between items-center mb-8">
+                            <span className="bg-slate-800 px-4 py-2 rounded-full font-mono text-cyan-400 text-xs">ROOM: {roomId} ({digitCount}位)</span>
+                            <button onClick={()=>window.location.reload()} className="text-slate-600 hover:text-red-400">退出</button>
+                        </div>
+                        {roomData.status === 'waiting' ? (
+                            <div className="text-center py-20">
+                                <h2 className="text-2xl font-bold mb-8">等待遊戲開始</h2>
+                                {isHost ? <button onClick={startGame} className="btn-primary px-12 py-4 text-2xl">開始遊戲</button> : <p className="animate-pulse">房主準備中...</p>}
+                            </div>
+                        ) : (
+                            <div className="space-y-8">
+                                {roomData.status === 'finished' && (
+                                    <div className="text-center py-10">
+                                        <h2 className={`text-6xl font-black mb-4 ${roomData.winner===playerId?'text-green-400':'text-red-400'}`}>{roomData.winner===playerId?'WIN':'LOSE'}</h2>
+                                        <p className="font-mono text-slate-500">謎底: {roomData.answer}</p>
+                                        <button onClick={()=>window.location.reload()} className="mt-8 bg-slate-800 px-8 py-3 rounded-full">重來</button>
+                                    </div>
+                                )}
+                                {roomData.status === 'playing' && (
+                                    <div className="space-y-10">
+                                        <form onSubmit={submitGuess} className="max-w-sm mx-auto space-y-6">
+                                            <input autoFocus type="text" maxLength={digitCount} className="w-full bg-slate-950 border-4 border-slate-800 rounded-3xl p-6 text-6xl text-center font-mono outline-none focus:border-cyan-500" value={guess} onChange={(e)=>setGuess(e.target.value.replace(/\D/g,''))}/>
+                                            <button className="w-full btn-primary py-5 text-3xl">猜！</button>
+                                            {error && <p className="text-red-500 text-center">{error}</p>}
+                                        </form>
+                                        <div className="max-w-sm mx-auto p-4 bg-slate-950/30 rounded-3xl border border-slate-800">
+                                            <div className="grid grid-cols-5 gap-2">
+                                                {[0,1,2,3,4,5,6,7,8,9].map(n => (
+                                                    <button key={n} onClick={()=>{
+                                                        const newM = [...marks];
+                                                        const s = ['none','correct','wrong'];
+                                                        newM[n] = s[(s.indexOf(marks[n])+1)%3];
+                                                        setMarks(newM);
+                                                    }} className={`h-10 rounded-xl border flex items-center justify-center font-bold text-sm ${marks[n]==='correct'?'bg-green-600 border-green-400':marks[n]==='wrong'?'bg-red-900/40 border-red-800 line-through':'bg-slate-900 border-slate-800'}`}>{n}</button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                    <div className="w-full lg:w-80 bg-glass p-6 rounded-[2.5rem] h-[600px] flex flex-col shadow-2xl">
+                        <h3 className="text-[10px] font-black text-slate-500 mb-6 uppercase tracking-widest">Battle Logs</h3>
+                        <div className="flex-grow overflow-y-auto custom-scrollbar space-y-6 pr-2">
+                            {Object.values(roomData.players || {}).map(p => (
+                                <div key={p.id} className="p-4 bg-slate-900/50 rounded-2xl border border-white/5">
+                                    <div className="flex justify-between text-[10px] opacity-40 mb-2 uppercase"><span>{p.id===playerId?'我':p.id}</span><span>{p.history?.length||0} 次</span></div>
+                                    <div className="space-y-1">
+                                        {p.history?.slice(0, 3).map((h, i) => (
+                                            <div key={i} className="flex justify-between text-xs px-2 py-1 bg-black/20 rounded">
+                                                <span>{h.guess}</span>
+                                                <span className="text-cyan-400 font-bold">{h.a}A{h.b}B</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

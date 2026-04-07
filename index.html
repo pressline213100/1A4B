@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1A2B BATTLE - 全功能穩定版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Outfit', sans-serif; background-color: #0f172a; color: #f8fafc; overflow-x: hidden; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        @keyframes fade-in { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slide-in { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+        .animate-fade-in { animation: fade-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .animate-slide-in { animation: slide-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    </style>
+</head>
+<body class="min-h-screen py-8 px-4 flex flex-col items-center">
+
+    <header class="text-center mb-10 animate-fade-in">
+        <h1 class="text-5xl md:text-6xl font-black bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent mb-2 italic uppercase">1A2B BATTLE</h1>
+        <p class="text-slate-500 font-black uppercase tracking-[0.3em] text-[10px]">房主權益版 ‧ 全方位計分模式</p>
+    </header>
+
+    <div id="app" class="w-full max-w-6xl animate-fade-in">
+        <!-- 登入介面 (Lobby) -->
+        <div id="lobby-view" class="max-w-md mx-auto bg-slate-800 rounded-[2.5rem] p-8 border border-slate-700 shadow-2xl relative overflow-hidden">
+            <h2 class="text-xl font-black mb-6 flex items-center"><span class="bg-cyan-500 w-2 h-6 rounded-full mr-3"></span>戰士報到</h2>
+            <div class="space-y-6">
+                <div>
+                  <label class="block text-[10px] font-black text-slate-500 mb-2 uppercase tracking-widest">您的暱稱</label>
+                  <input id="playerName" type="text" class="w-full bg-slate-900 border-2 border-slate-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-cyan-500 text-white font-bold" placeholder="輸入大名...">
+                </div>
+                <div>
+                  <label class="block text-[10px] font-black text-slate-500 mb-2 uppercase tracking-widest">遊戲類型 (TYPE)</label>
+                  <div class="grid grid-cols-2 gap-3">
+                    <button onclick="setType('number')" id="type-number" class="py-3 rounded-xl border-2 font-black transition-all bg-cyan-600 border-cyan-400 text-white shadow-lg shadow-cyan-900/40 text-xs uppercase">數字對決</button>
+                    <button onclick="setType('word')" id="type-word" class="py-3 rounded-xl border-2 font-black transition-all bg-slate-700/50 border-slate-600 text-slate-400 text-xs uppercase">英文字詞</button>
+                  </div>
+                </div>
+                <div id="digit-select-area">
+                  <label class="block text-[10px] font-black text-slate-500 mb-2 uppercase tracking-widest">位數難度 (DIGITS)</label>
+                  <div class="grid grid-cols-3 gap-3">
+                    <button onclick="setDifficulty(3)" id="btn-3" class="py-3 rounded-xl border-2 font-black transition-all bg-slate-700/50 border-slate-600 text-slate-400">3位</button>
+                    <button onclick="setDifficulty(4)" id="btn-4" class="py-3 rounded-xl border-2 font-black transition-all bg-cyan-600 border-cyan-400 text-white shadow-lg shadow-cyan-900/40">4位</button>
+                    <button onclick="setDifficulty(5)" id="btn-5" class="py-3 rounded-xl border-2 font-black transition-all bg-slate-700/50 border-slate-600 text-slate-400">5位</button>
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-[10px] font-black text-slate-500 mb-2 uppercase tracking-widest">對戰模式 (MODE)</label>
+                  <div class="grid grid-cols-2 gap-3">
+                    <button onclick="setMode('shared')" id="mode-shared" class="py-3 rounded-xl border-2 font-black transition-all bg-cyan-600 border-cyan-400 text-white shadow-lg shadow-cyan-900/40 text-xs uppercase">共享模式</button>
+                    <button onclick="setMode('private')" id="mode-private" class="py-3 rounded-xl border-2 font-black transition-all bg-slate-700/50 border-slate-600 text-slate-400 text-xs uppercase">隱私模式</button>
+                  </div>
+                </div>
+                <div class="pt-4 space-y-4">
+                    <button onclick="createRoom()" class="w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-black py-5 rounded-2xl shadow-xl transform active:scale-95 transition-all text-xl uppercase tracking-widest">👑 開設對戰房</button>
+                    <div class="grid grid-cols-3 gap-3">
+                        <input id="roomIdInput" type="text" placeholder="房號" class="col-span-2 bg-slate-900 border-2 border-slate-700 rounded-2xl p-4 text-center text-2xl font-mono text-white font-black focus:border-slate-500 outline-none transition-all" maxlength="4">
+                        <button onclick="joinRoom()" class="bg-slate-700/50 hover:bg-slate-600 text-white font-black rounded-2xl border-2 border-slate-600 transition-all active:scale-95 uppercase text-xs">加入玩家</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 遊戲主體 (Game View) -->
+        <div id="game-view" class="hidden grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <div class="lg:col-span-3 space-y-8">
+                <section class="bg-slate-800 rounded-[3rem] p-10 border border-slate-700 shadow-2xl relative">
+                    <div class="flex justify-between items-center mb-10 overflow-x-auto gap-4 custom-scrollbar pb-2">
+                        <div class="flex items-center space-x-3 flex-shrink-0">
+                            <div class="bg-slate-950 border-2 border-slate-800 px-5 py-2 rounded-2xl">
+                                <span class="text-slate-600 text-[9px] font-black block uppercase mb-1 leading-none">ROOM ID</span>
+                                <span id="currentRoomId" class="text-white font-mono font-black text-xl leading-none">----</span>
+                            </div>
+                            <div class="bg-slate-950 border-2 border-slate-800 px-5 py-2 rounded-2xl">
+                                <span class="text-slate-600 text-[9px] font-black block uppercase mb-1 leading-none">MODE</span>
+                                <span id="currentDifficulty" class="text-cyan-400 font-black text-xl leading-none">----</span>
+                            </div>
+                            <button id="toggle-history-btn" onclick="toggleHistory()" class="hidden bg-cyan-500/10 border-2 border-cyan-500/30 px-5 py-2 rounded-xl text-[10px] font-black text-cyan-500 uppercase tracking-widest transition-all hover:bg-cyan-500 hover:text-white flex-shrink-0"></button>
+                        </div>
+                        <button onclick="exitRoom()" class="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border-2 border-red-500/30 px-6 py-2 rounded-xl font-black text-xs uppercase flex-shrink-0">EXIT</button>
+                    </div>
+
+                    <div id="win-display" class="hidden text-center py-10 bg-green-900/10 border-2 border-green-500/20 rounded-[3rem] mb-10">
+                        <div class="text-7xl mb-4">🏆</div>
+                        <h2 class="text-4xl font-black text-white italic uppercase">Round Over!</h2>
+                        <p id="winner-name-txt" class="text-green-400 font-black text-xl mb-6"></p>
+                        <div class="inline-block bg-slate-950 px-10 py-6 rounded-3xl border border-white/5 shadow-2xl mb-8">
+                            <span id="finalAnswerTxt" class="text-7xl font-mono font-black tracking-[0.5em] text-white">----</span>
+                        </div><br>
+                        <button id="restart-game-btn" onclick="restartGame()" class="hidden bg-white text-slate-950 px-12 py-4 rounded-full font-black text-xl uppercase tracking-widest hover:bg-cyan-500 hover:text-white transition-all">Next Match</button>
+                        <p id="wait-host-txt" class="text-slate-500 italic mt-4 hidden">等待房主開啟下一局...</p>
+                    </div>
+
+                    <div id="input-display" class="max-w-md mx-auto space-y-12">
+                        <div class="relative">
+                            <input id="guessInput" type="text" maxlength="4" onkeydown="if(event.key==='Enter')handleGuess()" class="w-full bg-slate-950 border-4 border-slate-900 rounded-[3rem] p-10 text-7xl font-mono text-center tracking-[0.4em] focus:border-cyan-500 outline-none text-white shadow-2xl transition-all" placeholder="?">
+                            <div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-cyan-600 px-8 py-2 rounded-full text-[10px] font-black text-white uppercase tracking-widest border-2 border-cyan-400 shadow-xl">ATTACK NODE</div>
+                        </div>
+                        <button onclick="handleGuess()" class="w-full bg-white text-slate-950 font-black py-8 rounded-[2.5rem] shadow-2xl text-4xl transform active:translate-y-2 transition-all uppercase tracking-widest">Submit!</button>
+                    </div>
+                </section>
+
+                <section class="bg-slate-800/40 rounded-[2.5rem] p-8 border border-slate-800/50 backdrop-blur-xl shadow-xl">
+                    <div id="marks-grid" class="grid grid-cols-5 md:grid-cols-10 gap-4"></div>
+                    <!-- 沙盤推演區 -->
+                    <div id="sorter-area" class="mt-8 pt-8 border-t border-slate-700/50"></div>
+                </section>
+            </div>
+
+            <div class="space-y-8 flex flex-col h-full">
+                <section class="bg-slate-800 rounded-[2.5rem] p-8 border border-slate-700 shadow-2xl flex flex-col min-h-[400px]">
+                    <h3 class="text-[9px] font-black text-slate-500 mb-8 uppercase tracking-widest border-b border-slate-700 pb-5">Ranking Board</h3>
+                    <div id="leaderboard" class="space-y-4 overflow-y-auto custom-scrollbar flex-grow"></div>
+                </section>
+                <section class="bg-slate-800 rounded-[2.5rem] p-8 border border-slate-700 shadow-2xl flex flex-col flex-1 max-h-[400px] overflow-hidden">
+                    <h3 class="text-[9px] font-black text-slate-500 mb-8 uppercase tracking-widest italic border-b border-slate-700 pb-5">Battle Logs</h3>
+                    <div id="history-log" class="overflow-y-auto custom-scrollbar flex-grow space-y-4 pr-2"></div>
+                </section>
+                <section class="bg-slate-800 rounded-[2.5rem] p-6 border border-slate-700 shadow-2xl flex flex-col h-[350px]">
+                    <h3 class="text-[10px] font-black text-slate-500 mb-4 uppercase tracking-widest border-b border-slate-700 pb-3 flex items-center justify-between">
+                        <span>LIVE CHAT</span>
+                        <span id="chat-count" class="text-xs bg-slate-700 px-2 rounded-full">0</span>
+                    </h3>
+                    <div id="chat-messages" class="overflow-y-auto custom-scrollbar flex-grow space-y-3 mb-4 pr-1 flex flex-col">
+                        <!-- Chat messages will be injected here -->
+                    </div>
+                    <form id="chat-form" onsubmit="sendChat(event)" class="flex space-x-2 shrink-0">
+                        <input id="chat-input" type="text" class="w-full bg-slate-900 border border-slate-700 rounded-2xl px-4 py-3 text-sm text-white focus:border-cyan-500 outline-none transition-all placeholder-slate-600" placeholder="打個招呼吧...">
+                        <button type="submit" class="bg-gradient-to-r from-cyan-600 to-blue-500 text-white px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:shadow-cyan-500/25 active:scale-95 transition-all">傳送</button>
+                    </form>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
+        import { getDatabase, ref, set, push, onValue, get, update, onDisconnect, remove, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAgTxd7KtrmS1L58x4VRnMWHWZfm0UlbCE",
+            authDomain: "a2b-schonbro.firebaseapp.com",
+            databaseURL: "https://a2b-schonbro-default-rtdb.firebaseio.com",
+            projectId: "a2b-schonbro",
+            storageBucket: "a2b-schonbro.firebasestorage.app",
+            messagingSenderId: "813643775031",
+            appId: "1:813643775031:web:c595196f53390bec4913b2"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        window.state = {
+            digitCount: 4,
+            gameMode: 'shared',
+            gameType: 'number',
+            playerId: localStorage.getItem('p_id') || 'ID_' + Math.random().toString(36).substr(2, 5),
+            playerName: localStorage.getItem('p_name') || '',
+            roomId: '', answer: '', 
+            marks: Array(10).fill('none'),
+            wordMarks: Array(26).fill('none'),
+            sorter: Array(5).fill(''), 
+            activeSlot: null, // 當前啟動中準備選取的槽位
+            gameOver: false, hostId: '',
+            dictionary: []
+        };
+        localStorage.setItem('p_id', state.playerId);
+
+        // 載入字典 (Wordle 常用 5 字母字典)
+        fetch('https://raw.githubusercontent.com/charlesreid1/five-letter-words/master/sgb-words.txt')
+            .then(r => r.text())
+            .then(t => state.dictionary = t.toUpperCase().split('\n').filter(w => w.length === 5));
+
+        window.setType = (t) => {
+            state.gameType = t;
+            const isWord = t === 'word';
+            if (isWord) setDifficulty(5);
+            document.getElementById('digit-select-area').style.display = isWord ? 'none' : 'block';
+            ['number', 'word'].forEach(k => {
+                const b = document.getElementById('type-'+k);
+                if (b) b.className = (k===t) ? "py-3 rounded-xl border-2 font-black transition-all bg-cyan-600 border-cyan-400 text-white shadow-lg shadow-cyan-900/40 text-xs uppercase" : "py-3 rounded-xl border-2 font-black transition-all bg-slate-700/50 border-slate-600 text-slate-400 text-xs uppercase";
+            });
+        };
+
+        window.setDifficulty = (n) => {
+            state.digitCount = n;
+            [3,4,5].forEach(i => {
+                const b = document.getElementById('btn-'+i);
+                if (b) b.className = (i===n) ? "py-3 rounded-xl border-2 font-black transition-all bg-cyan-600 border-cyan-400 text-white shadow-lg" : "py-3 rounded-xl border-2 font-black transition-all bg-slate-700/50 border-slate-600 text-slate-400";
+            });
+        };
+
+        window.setMode = (m) => {
+            state.gameMode = m;
+            ['shared', 'private'].forEach(k => {
+                const b = document.getElementById('mode-'+k);
+                if (b) {
+                   if (k === m) b.className = "py-3 rounded-xl border-2 font-black transition-all bg-cyan-600 border-cyan-400 text-white shadow-lg shadow-cyan-900/40 text-xs uppercase";
+                   else b.className = "py-3 rounded-xl border-2 font-black transition-all bg-slate-700/50 border-slate-600 text-slate-400 text-xs uppercase";
+                }
+            });
+        };
+
+        window.createRoom = async () => {
+            if (!preCheck()) return;
+            const newId = Math.floor(1000 + Math.random() * 9000).toString();
+            state.roomId = newId;
+            const newRoom = {
+                answer: state.gameType === 'word' ? state.dictionary[Math.floor(Math.random() * state.dictionary.length)] : generateAnswer(state.digitCount),
+                status: 'playing',
+                digitCount: state.digitCount,
+                gameMode: state.gameMode,
+                gameType: state.gameType,
+                hostId: state.playerId,
+                showHistory: true,
+                createdAt: serverTimestamp(),
+                players: {}
+            };
+            newRoom.players[state.playerId] = { name: state.playerName, id: state.playerId, score: 0, guessCount: 0 };
+            await set(ref(db, `rooms/${newId}`), newRoom);
+            enterRoom(newId);
+        };
+
+        window.joinRoom = async () => {
+            if (!preCheck()) return;
+            const id = document.getElementById('roomIdInput').value.trim();
+            const snap = await get(ref(db, `rooms/${id}`));
+            if (!snap.exists()) return alert('找不到房號');
+            state.roomId = id;
+            enterRoom(id);
+        };
+
+        const preCheck = () => {
+            const name = document.getElementById('playerName').value.trim();
+            if (!name) { alert('請輸入暱稱'); return false; }
+            state.playerName = name;
+            localStorage.setItem('p_name', name);
+            return true;
+        };
+
+        window.enterRoom = (id) => {
+            document.getElementById('lobby-view').classList.add('hidden');
+            document.getElementById('game-view').classList.remove('hidden');
+            
+            const pRef = ref(db, `rooms/${id}/players/${state.playerId}`);
+            get(pRef).then(snap => {
+                const ex = snap.val();
+                update(pRef, { name: state.playerName, id: state.playerId, score: ex?.score || 0, guessCount: ex?.guessCount || 0 });
+            });
+            onDisconnect(pRef).update({ lastActive: null });
+
+            onValue(ref(db, `rooms/${id}`), (snap) => {
+                const data = snap.val();
+                if (!data) return location.reload();
+                if (data.players && !data.players[state.playerId]) { alert('你已被踢出房間'); return location.reload(); }
+
+                state.answer = data.answer;
+                state.digitCount = data.digitCount;
+                
+                // 房主轉移邏輯 (Host Migration)
+                const currentHostId = data.hostId;
+                if (data.players && currentHostId && !data.players[currentHostId]) {
+                    const remainingIds = Object.keys(data.players).sort();
+                    if (remainingIds.length > 0) {
+                        const nextHostId = remainingIds[0];
+                        // 僅由「接班人」發動更新，避免衝突
+                        if (state.playerId === nextHostId) {
+                             update(ref(db, `rooms/${id}`), { hostId: nextHostId });
+                        }
+                    }
+                }
+                
+                state.hostId = data.hostId;
+                const isHost = state.hostId === state.playerId;
+
+                // UI Header Sync
+                document.getElementById('currentRoomId').innerText = id;
+                document.getElementById('currentDifficulty').innerText = state.digitCount + ' 位';
+                const inputIdx = document.getElementById('guessInput');
+                inputIdx.maxLength = state.digitCount;
+                inputIdx.placeholder = "?".repeat(state.digitCount);
+
+                // History Toggle UI
+                const showLog = data.showHistory !== false;
+                const toggleBtn = document.getElementById('toggle-history-btn');
+                if (isHost) {
+                   toggleBtn.classList.remove('hidden');
+                   toggleBtn.innerText = showLog ? '🕵️ 紀錄: 公開' : '🕵️ 紀錄: 隱藏';
+                }
+
+                // Render Logs
+                const logArea = document.getElementById('history-log');
+                logArea.innerHTML = '';
+                if (!showLog) {
+                   logArea.innerHTML = '<div class="text-center py-20 text-slate-700 italic text-xs tracking-[0.2em] leading-relaxed animate-pulse">🕵️ 戰場靜默中...<br>(歷史紀錄已對所有人隱藏)</div>';
+                } else {
+                    let logs = data.history ? Object.values(data.history).reverse() : [];
+                    if ((data.gameMode || 'shared') === 'private' && !isHost) {
+                        logs = logs.filter(item => item.playerId === state.playerId);
+                    }
+                    if (logs.length === 0) {
+                        logArea.innerHTML = '<div class="text-center py-20 text-slate-700 italic text-xs tracking-widest uppercase italic border-2 border-dashed border-slate-800 rounded-3xl">目前的模式下暫無可見紀錄...</div>';
+                    } else {
+                        logs.forEach(item => {
+                            const h = document.createElement('div');
+                            h.className = `p-5 rounded-[2rem] border-2 animate-slide-in ${item.playerId === state.playerId ? 'bg-slate-950 border-cyan-900/30' : 'bg-slate-950/40 border-slate-900'}`;
+                            h.innerHTML = `<div class="flex justify-between items-center mb-4"><span class="text-[9px] font-black px-3 py-1 rounded-full uppercase ${item.playerId === state.playerId ? 'bg-cyan-500 text-slate-900' : 'bg-slate-700 text-slate-400'}">${item.playerName}</span><span class="text-[9px] font-mono text-slate-800">${new Date(item.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span></div><div class="flex flex-col space-y-3"><span class="text-3xl font-black font-mono tracking-[0.2em] italic text-white">${item.guess}</span><div class="flex space-x-3"><span class="bg-cyan-500/10 border-2 border-cyan-500/50 text-cyan-400 py-3 rounded-2xl flex-1 text-center font-black">${item.a}A</span><span class="bg-blue-500/10 border-2 border-blue-500/50 text-blue-400 py-3 rounded-2xl flex-1 text-center font-black">${item.b}B</span></div></div>`;
+                            logArea.appendChild(h);
+                        });
+                    }
+                }
+
+                // Leaderboard
+                const lb = document.getElementById('leaderboard'); lb.innerHTML = '';
+                if (data.players) {
+                    Object.values(data.players).sort((a,b) => (b.score||0)-(a.score||0)).forEach((p, i) => {
+                        const d = document.createElement('div');
+                        d.className = `p-4 rounded-3xl border-2 ${p.id === state.playerId ? 'bg-cyan-900/10 border-cyan-500/40' : 'bg-slate-900/50 border-slate-800/50'}`;
+                        d.innerHTML = `<div class="flex justify-between items-center mb-2"><span class="text-sm font-black ${p.id === state.playerId ? 'text-white' : 'text-slate-400'}">${i === 0 ? '👑' : ''} ${p.name}</span><span class="text-xs font-black text-yellow-500">${p.score || 0} PTS</span></div><div class="flex justify-between items-center text-[9px] font-black tracking-widest text-slate-600"><span>Guesses: ${p.guessCount || 0}</span> ${isHost && p.id !== state.playerId ? `<button onclick="kickPlayer('${p.id}')" class="bg-red-900/40 hover:bg-red-600 px-2 rounded text-red-500 uppercase">Kick X</button>` : p.id === state.hostId ? '<span class="text-indigo-400">HOST</span>' : ''}</div>`;
+                        lb.appendChild(d);
+                    });
+                }
+
+                if (data.status === 'finished') {
+                    document.getElementById('win-display').classList.remove('hidden');
+                    document.getElementById('input-display').classList.add('hidden');
+                    document.getElementById('winner-name-txt').innerText = `${data.winner} 已成功破解！`;
+                    document.getElementById('finalAnswerTxt').innerText = state.answer;
+                    if (isHost) document.getElementById('restart-game-btn').classList.remove('hidden');
+                    else document.getElementById('wait-host-txt').classList.remove('hidden');
+                } else {
+                    document.getElementById('win-display').classList.add('hidden');
+                    document.getElementById('input-display').classList.remove('hidden');
+                }
+
+                // Chat rendering
+                const chatArea = document.getElementById('chat-messages');
+                const chatCount = document.getElementById('chat-count');
+                if (data.chat) {
+                    const chats = Object.values(data.chat);
+                    chatCount.innerText = chats.length;
+                    
+                    chatArea.innerHTML = '';
+                    chats.forEach(c => {
+                        const row = document.createElement('div');
+                        const isMe = c.playerId === state.playerId;
+                        row.className = `flex flex-col max-w-[85%] ${isMe ? 'self-end items-end' : 'self-start items-start'}`;
+                        row.innerHTML = `
+                            <span class="text-[8px] text-slate-500 mb-1">${c.playerName || '無名'}</span>
+                            <div class="px-4 py-2 rounded-2xl text-sm break-words ${isMe ? 'bg-cyan-600/80 text-white rounded-tr-sm border border-cyan-500/50' : 'bg-slate-900/80 text-white rounded-tl-sm border border-slate-700/50'}">
+                                ${c.text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}
+                            </div>
+                        `;
+                        chatArea.appendChild(row);
+                    });
+                    chatArea.scrollTop = chatArea.scrollHeight;
+                } else {
+                    chatArea.innerHTML = '';
+                    chatCount.innerText = '0';
+                }
+            });
+            renderMarks();
+        };
+
+        window.handleGuess = async () => {
+            let guess = document.getElementById('guessInput').value.toUpperCase();
+            if (guess.length !== state.digitCount) return;
+            
+            // 單字模式驗證
+            if (state.gameType === 'word') {
+                if (!state.dictionary.includes(guess)) return alert('這不是一個有效的英文單字！');
+            } else {
+                guess = guess.replace(/\D/g, '');
+                if (guess.length !== state.digitCount) return;
+            }
+
+            const historyRef = ref(db, `rooms/${state.roomId}/history`);
+            const { a, b } = calculateAB(state.answer, guess);
+            const snap = await get(ref(db, `rooms/${state.roomId}`));
+            const rData = snap.val();
+            const pData = rData.players || {};
+            const mil = rData.milestones || {};
+            let scoreAdd = 0; let updates = {};
+
+            const total = a + b;
+            if (!mil.m_sum3 && total >= 3) { scoreAdd += 20; updates[`milestones/m_sum3`] = { p: state.playerName }; }
+            if (!mil.m_sum5 && total >= 5) { scoreAdd += 30; updates[`milestones/m_sum5`] = { p: state.playerName }; }
+            if (!mil.m_a2 && a >= 2) { scoreAdd += 20; updates[`milestones/m_a2`] = { p: state.playerName }; }
+            if (!mil.m_a3 && a >= 3) { scoreAdd += 30; updates[`milestones/m_a3`] = { p: state.playerName }; }
+
+            await push(historyRef, { guess, a, b, playerId: state.playerId, playerName: state.playerName, timestamp: Date.now() });
+
+            if (a === state.digitCount) {
+                scoreAdd += 60;
+                updates['status'] = 'finished'; updates['winner'] = state.playerName;
+                const sorted = Object.values(pData).map(p => ({ id: p.id, count: (p.id === state.playerId ? (p.guessCount||0)+1 : (p.guessCount||0)) })).sort((x,y)=>x.count-y.count);
+                if (sorted[0]) updates[`players/${sorted[0].id}/score`] = (pData[sorted[0].id]?.score || 0) + 30 + (sorted[0].id === state.playerId ? scoreAdd : 0);
+                if (sorted[1]) updates[`players/${sorted[1].id}/score`] = (pData[sorted[1].id]?.score || 0) + 20 + (sorted[1].id === state.playerId ? scoreAdd : 0);
+                if (sorted[2]) updates[`players/${sorted[2].id}/score`] = (pData[sorted[2].id]?.score || 0) + 10 + (sorted[2].id === state.playerId ? scoreAdd : 0);
+                if (!sorted.slice(0,3).some(x=>x.id===state.playerId)) updates[`players/${state.playerId}/score`] = (pData[state.playerId]?.score||0)+scoreAdd;
+            } else if (scoreAdd > 0) {
+                updates[`players/${state.playerId}/score`] = (pData[state.playerId]?.score || 0) + scoreAdd;
+            }
+            updates[`players/${state.playerId}/guessCount`] = (pData[state.playerId]?.guessCount || 0) + 1;
+            await update(ref(db, `rooms/${state.roomId}`), updates);
+            document.getElementById('guessInput').value = '';
+        };
+
+        window.toggleHistory = async () => {
+            if (state.playerId !== state.hostId) return alert('只有房主能操作');
+            const roomRef = ref(db, `rooms/${state.roomId}`);
+            const snap = await get(roomRef);
+            await update(roomRef, { showHistory: !(snap.val().showHistory !== false) });
+        };
+
+        window.restartGame = async () => {
+            if (state.playerId !== state.hostId) return;
+            const snap = await get(ref(db, `rooms/${state.roomId}/players`));
+            const ps = snap.val() || {};
+            const nextAnswer = state.gameType === 'word' ? state.dictionary[Math.floor(Math.random() * state.dictionary.length)] : generateAnswer(state.digitCount);
+            const updates = { answer: nextAnswer, status: 'playing', history: null, milestones: null, chat: null };
+            Object.keys(ps).forEach(id => { updates[`players/${id}/guessCount`] = 0; updates[`players/${id}/score`] = 0; });
+            await update(ref(db, `rooms/${state.roomId}`), updates);
+        };
+
+        window.sendChat = async (e) => {
+            e.preventDefault();
+            const input = document.getElementById('chat-input');
+            const msg = input.value.trim();
+            if (!msg || !state.roomId) return;
+            const chatRef = ref(db, `rooms/${state.roomId}/chat`);
+            await push(chatRef, {
+                playerId: state.playerId,
+                playerName: state.playerName || '無名',
+                text: msg,
+                timestamp: serverTimestamp()
+            });
+            input.value = '';
+        };
+
+        window.kickPlayer = (id) => { if (confirm('踢除該玩家？')) remove(ref(db, `rooms/${state.roomId}/players/${id}`)); };
+        window.exitRoom = () => location.reload();
+        const generateAnswer = (l) => { let n = [0,1,2,3,4,5,6,7,8,9]; let r = []; for(let i=0;i<l;i++) r.push(n.splice(Math.floor(Math.random()*n.length),1)[0]); return r.join(''); };
+        
+        const calculateAB = (an, gu) => {
+            let a = 0, b = 0;
+            let anArr = an.split('');
+            let guArr = gu.split('');
+            // Find A
+            for (let i = 0; i < anArr.length; i++) {
+                if (anArr[i] === guArr[i]) {
+                    a++; anArr[i] = null; guArr[i] = null;
+                }
+            }
+            // Find B
+            for (let i = 0; i < guArr.length; i++) {
+                if (guArr[i] !== null) {
+                    let idx = anArr.indexOf(guArr[i]);
+                    if (idx !== -1) { b++; anArr[idx] = null; }
+                }
+            }
+            return { a, b };
+        };
+        const renderMarks = () => {
+            const g = document.getElementById('marks-grid'); g.innerHTML = '';
+            const isWord = state.gameType === 'word';
+            const items = isWord ? "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split('') : [0,1,2,3,4,5,6,7,8,9];
+            const activeMarks = isWord ? state.wordMarks : state.marks;
+            
+            g.className = isWord ? "grid grid-cols-6 md:grid-cols-13 gap-2" : "grid grid-cols-5 md:grid-cols-10 gap-4";
+            
+            items.forEach((label, i) => {
+                const m = activeMarks[i];
+                const b = document.createElement('button');
+                b.className = `aspect-square rounded-xl border-2 text-xl font-black transition-all ${m==='correct'?'bg-green-500 border-green-300 text-white shadow-lg':m==='wrong'?'bg-red-500/20 border-red-900/40 text-red-900 line-through':'bg-slate-900 border-slate-700 text-slate-700'}`;
+                b.innerText = label;
+                b.onclick = () => {
+                    const s = ['none','correct','wrong'];
+                    const next = s[(s.indexOf(m)+1)%3];
+                    if (isWord) state.wordMarks[i] = next; else state.marks[i] = next;
+                    renderMarks();
+                };
+                g.appendChild(b);
+            });
+            renderSorter();
+        };
+
+        const renderSorter = () => {
+            const area = document.getElementById('sorter-area');
+            if (!area) return;
+            const isWord = state.gameType === 'word';
+            area.innerHTML = `
+                <div class="mb-6 flex items-center justify-between">
+                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">沙盤推演 (STRATEGIC DRAFTS)</span>
+                    <button onclick="clearSorter()" class="text-[9px] font-black text-red-500/60 uppercase hover:text-red-400 transition-all">全部清除</button>
+                </div>
+                <div class="flex justify-center space-x-3 mb-8">
+                    ${state.sorter.slice(0, state.digitCount).map((val, i) => `
+                        <div onclick="toggleActiveSlot(${i})" class="w-12 h-16 md:w-16 md:h-20 border-2 rounded-2xl flex items-center justify-center text-3xl font-black transition-all cursor-pointer ${state.activeSlot === i ? 'bg-cyan-500/20 border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.3)] text-white scale-110' : 'bg-slate-950/50 border-slate-700 text-cyan-400 opacity-60 hover:opacity-100'}">
+                            ${val || '?'}
+                        </div>
+                    `).join('')}
+                </div>
+                ${state.activeSlot !== null ? `
+                    <div class="bg-slate-900/80 p-6 rounded-[2rem] border-2 border-slate-700/50 animate-fade-in">
+                        <div class="flex justify-between items-center mb-4">
+                           <span class="text-[9px] font-black text-cyan-500 uppercase tracking-[0.2em] italic">選取放入第 ${state.activeSlot + 1} 位</span>
+                           <button onclick="toggleActiveSlot(null)" class="text-slate-500 font-bold text-xs uppercase hover:text-white">取消</button>
+                        </div>
+                        <div class="${isWord ? "grid grid-cols-7 md:grid-cols-13 gap-2" : "grid grid-cols-5 md:grid-cols-10 gap-3"}">
+                           ${(isWord ? "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split('') : [0,1,2,3,4,5,6,7,8,9]).map(v => `
+                               <button onclick="selectForActiveSlot('${v}')" class="aspect-square bg-slate-950 border border-slate-800 rounded-xl text-xs md:text-sm font-black text-slate-300 hover:bg-cyan-500 hover:text-white hover:border-cyan-300 transition-all shadow-xl">${v}</button>
+                           `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+            `;
+        };
+
+        window.toggleActiveSlot = (i) => {
+            state.activeSlot = (state.activeSlot === i) ? null : i;
+            renderSorter();
+        };
+
+        window.selectForActiveSlot = (v) => {
+            if (state.activeSlot !== null) {
+                state.sorter[state.activeSlot] = v;
+                state.activeSlot = null;
+                renderSorter();
+            }
+        };
+
+        window.clearSorter = () => {
+            state.sorter = Array(5).fill('');
+            state.activeSlot = null;
+            renderSorter();
+        }
+    </script>
+</body>
+</html>
